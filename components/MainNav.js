@@ -1,87 +1,94 @@
-import { useState } from 'react';
-import { useRouter } from 'next/router';
-import { useAtom } from 'jotai';
-import { searchHistoryAtom } from '@/store';
-import Container from 'react-bootstrap/Container';
-import Nav from 'react-bootstrap/Nav';
-import Navbar from 'react-bootstrap/Navbar';
+import { Container, Nav, Navbar, Form, Button, NavDropdown } from "react-bootstrap";
+import { readToken, removeToken } from '@/lib/authenticate';
 import Link from 'next/link';
-import Form from 'react-bootstrap/Form';
-import Button from 'react-bootstrap/Button';
-import NavDropdown from 'react-bootstrap/NavDropdown';
+import {useRouter} from 'next/router';
+import {useState} from 'react';
+import { useAtom } from "jotai";
+import { searchHistoryAtom } from "@/store";
 
-export default function MainNav() {
-    const router = useRouter();
-    const [searchField, setSearchField] = useState("");
-    const [isExpanded, setExpand] = useState(false);
-    const [searchHistory, setSearchHistory] = useAtom(searchHistoryAtom);
+export default function MainNav(){
 
-    function expand() {
-      setExpand(!isExpanded);
+  const [searchField, setSearchField] = useState("");
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [searchHistory, setSearchHistory] = useAtom(searchHistoryAtom);
+
+  const router = useRouter();
+  let token = readToken();
+
+  function submitForm(e){
+    e.preventDefault();
+
+    if(searchField != ""){
+      
+      router.push(`/artwork?title=true&q=${searchField}`);
+      setSearchField("");
+      setIsExpanded(false);
+      setSearchHistory(current => [...current, `title=true&q=${searchField}`]);
     }
+    
+  }
 
-    function toggleExpand() {
-      setExpand(false);
-    }
-
-    function submitForm(e) {
-        e.preventDefault();
-        if (!searchField){
-          return null;
-        }
-        let queryString ="";
-        queryString += `title=true&q=${searchField}`;
-        setSearchHistory(current => [...current, queryString]);
-        toggleExpand();
-        router.push(`/artwork?${queryString}`);
-    }
-
-    function changeForm(e) {
-        setSearchField(e.target.value);
-    }
+  function logout(){
+    setIsExpanded(false);
+    removeToken();
+    router.push("/");
+  }
 
   return (
-    <Navbar expanded={isExpanded} expand="lg" className="navbar-dark bg-primary">
-      <Container>
-        <Navbar.Brand>Harkirat Singh</Navbar.Brand>
-        <Navbar.Toggle onClick={expand} aria-controls="basic-navbar-nav"/>
-        <Navbar.Collapse id="basic-navbar-nav">
-          <Nav className="me-auto">
-            <Link href="/" passHref legacyBehavior>
-                <Nav.Link onClick={toggleExpand}>Home</Nav.Link>
-            </Link>
-            <Link href="/search" passHref legacyBehavior>
-                <Nav.Link active onClick={toggleExpand}>Advanced Search</Nav.Link>
-            </Link>
-          </Nav>
-          <Form className="d-flex" onSubmit={submitForm} >
-            <Form.Control
-              type="search"
-              placeholder="Search"
-              className="me-2"
-              aria-label="Search"
-              value={searchField}
-              onChange={changeForm}
-            />
-            <Button type="submit" variant="btn btn-success">Search</Button>
-          </Form>
-          <Nav>
-            <NavDropdown title="User Name" id="navbarScrollingDropdown">
-              <Link href="/favourites" passHref legacyBehavior>
-                <NavDropdown.Item onClick={toggleExpand}>
-                  Favourites
-                </NavDropdown.Item>
-              </Link>
-              <Link href="/history" passHref legacyBehavior>
-                <NavDropdown.Item active onClick={toggleExpand}>
-                  Search History
-                </NavDropdown.Item>
-              </Link>
-            </NavDropdown>
-          </Nav>
-          <br />
-        </Navbar.Collapse>
-      </Container>
-    </Navbar>
+    <>
+      <Navbar expand="lg" className="fixed-top navbar-dark bg-primary" expanded={isExpanded} >
+        <Container>
+          <Navbar.Brand>Harkirat Singh</Navbar.Brand>
+          <Navbar.Toggle aria-controls="basic-navbar-nav" onClick={()=>setIsExpanded(e => !e)} />
+          <Navbar.Collapse id="basic-navbar-nav" >
+            <Nav className="me-auto">
+              <Link href="/" passHref legacyBehavior><Nav.Link active={router.pathname === "/"} onClick={()=>setIsExpanded(false)} >Home</Nav.Link></Link>
+              {token && <Link href="/search" passHref legacyBehavior><Nav.Link active={router.pathname === "/search"} onClick={()=>setIsExpanded(false)} >Advanced Search</Nav.Link></Link>}
+              
+            </Nav>
+            &nbsp;
+            {token && <Form className="d-flex" onSubmit={submitForm}>
+              <Form.Control
+                type="search"
+                placeholder="Search"
+                className="me-2"
+                aria-label="Search"
+                value={searchField} onChange={(e) => setSearchField(e.target.value)}
+              />
+              <Button type="submit" variant="success">Search</Button>
+            </Form>}
+            &nbsp;
+            <Nav>
+              {token && <NavDropdown title={token.userName} id="basic-nav-dropdown">
+                
+                  <Link href="/favourites" passHref legacyBehavior><NavDropdown.Item active={router.pathname === "/favourites"} onClick={()=>setIsExpanded(false)}>Favourites</NavDropdown.Item></Link>
+                  <Link href="/history" passHref legacyBehavior><NavDropdown.Item active={router.pathname === "/history"}onClick={()=>setIsExpanded(false)}>Search History</NavDropdown.Item></Link>
+                  <Link href="/" passHref legacyBehavior><NavDropdown.Item active={router.pathname === "/logout"} onClick={()=>logout()}>Logout</NavDropdown.Item></Link>
+          
+                </NavDropdown>
+              }
+            </Nav>
+              
+            <Nav>
+            {!token && (
+                <Link href="/register" passHref legacyBehavior>
+                  <Nav.Link href="/register" active={router.pathname === "/register"} onClick={()=>setIsExpanded(false)}>
+                    Register
+                  </Nav.Link>
+                </Link>
+              )}
+              {!token && (
+                <Link href="/login" passHref legacyBehavior>
+                  <Nav.Link href="/login" active={router.pathname === "/login"} onClick={()=>setIsExpanded(false)}>
+                    Login
+                  </Nav.Link>
+                </Link>
+              )}
+            </Nav>
+          </Navbar.Collapse>
+        </Container>
+      </Navbar>
+      <br /><br /><br />
+    </>
   );
 }

@@ -1,94 +1,65 @@
-import { useState } from 'react';
+import { Button, Card } from 'react-bootstrap';
+import useSWR from 'swr';
+import Error from 'next/error';
 import { useAtom } from 'jotai';
 import { favouritesAtom } from '@/store';
-import Error from 'next/error';
-import useSWR from 'swr';
-import Card from 'react-bootstrap/Card';
-import Button from 'react-bootstrap/Button';
+import { useEffect, useState } from 'react';
+import { addToFavourites, removeFromFavourites } from '@/lib/UserData';
 
-export default function ArtworkCardDetail(object) {
+export default function ArtworkCardDetail({ objectID }) {
 
-    const { data, error } = useSWR(object.objectID ? `https://collectionapi.metmuseum.org/public/collection/v1/objects/${object.objectID}` : null);
-    const [favouritesList, setFavouritesList] = useAtom(favouritesAtom);
-    const [showAdded, setShowAdded] = useState();
+  const { data, error } = useSWR(objectID ? `https://collectionapi.metmuseum.org/public/collection/v1/objects/${objectID}` : null);
 
-    function favouritesClicked() {
-        if (showAdded) {
-            setFavouritesList(current => current.filter(fav => fav != object.objectID));
-        } else {
-            setFavouritesList(current => [...current, object.objectID]);
-        }
-        setShowAdded(!showAdded);
+  const [favouritesList, setFavouritesList] = useAtom(favouritesAtom);
+  const [showAdded, setShowAdded] = useState(false);
+
+  //useEffect()
+  useEffect(()=>{
+    setShowAdded(favouritesList?.includes(objectID));
+  });
+
+  async function favouritesClicked() {
+
+    if (showAdded) {
+      setFavouritesList(await removeFromFavourites(objectID));
+      setShowAdded(false);
+    } else {
+      setFavouritesList(await addToFavourites(objectID));
+      setShowAdded(true);
     }
+  }
 
-    if (error) {
-        return <Error statusCode={404} />;
-    }
+  if (error) {
+    return <Error statusCode={404} />
+  }
 
-    if (!data) {
-        return null;
-    }
+  if (data) {
+    return (<>
+      <Card>
+        {data.primaryImage && <Card.Img variant="top" src={data.primaryImage} />}
+        <Card.Body>
+          <Card.Title>{data.title || "N/A"}</Card.Title>
+          <Card.Text>
+            <strong>Date: </strong>{data.objectDate || "N/A"}<br />
+            <strong>Classification: </strong>{data.classification || "N/A"}<br />
+            <strong>Medium: </strong>{data.medium || "N/A"}
+            <br /><br />
 
+            <strong>Artist: </strong> {data.artistDisplayName || "N/A"} {data.artistWikidata_URL && <>( <a href={data.artistWikidata_URL} target="_blank" rel="noreferrer" >wiki</a> )</>}<br />
+            <strong>Credit Line: </strong> {data.creditLine || "N/A"}<br />
+            <strong>Dimensions: </strong> {data.dimensions || "N/A"}<br /><br />
 
-  const {
-    primaryImageSmall,
-    title,
-    objectDate,
-    classification,
-    medium,
-    artistDisplayName,
-    artistWikidata_URL,
-    creditLine,
-    dimensions,
-  } = data;
+            <Button variant={showAdded ? "primary" : "outline-primary"} onClick={favouritesClicked}>+ Favourite {showAdded && "( added )"}</Button>
 
-  return (
-    <Card>
-      {primaryImageSmall ? (
-                <Card.Img variant="top" src={data.primaryImage} />
-            ) : (
-                <Card.Img variant="top" src="https://via.placeholder.com/375x375.png?text=[+Not+Available+]" />
-            )}
+          </Card.Text>
 
-      <Card.Body>
-        <Card.Title>{title || "N/A"}</Card.Title>
-        <Card.Text>
+        </Card.Body>
+      </Card>
 
-          <h6>
-            <b>Date:</b> {objectDate || "N/A"}{" "}
-          </h6>
-          <h6>
-            <b>Classification:</b> {classification || "N/A"}{" "}
-          </h6>
-          <h6>
-            <b>Medium:</b> {medium || "N/A"}{" "}
-          </h6>
-          <br />
+    </>);
 
-          {artistDisplayName && artistWikidata_URL ? (
-            <>
-              <b>Artist:</b> {artistDisplayName}
-              <a href={artistWikidata_URL} target="_blank" rel="noreferrer">
-                (wiki)
-              </a>
-              <br />
-            </>
-          ) : (
-            <>
-              <b>Artist:</b> N/A
-              <br />
-            </>
-          )}
+  } else {
+    return null
+  }
 
-          <b>Credit Line:</b> {creditLine || "N/A"}
-          <br />
-          <b>Dimensions:</b> {dimensions || "N/A"}
-          <Button variant={showAdded ? "primary" : "outline-primary"} onClick={favouritesClicked} >
-                          {showAdded ? "+ Favourite (added)" : "+ Favourite"}
-          </Button>
-
-        </Card.Text>
-      </Card.Body>
-    </Card>
-  );
-};
+}
