@@ -4,7 +4,7 @@ import { favouritesAtom, searchHistoryAtom } from '@/store';
 import { useRouter } from 'next/router';
 import { removeFromHistory } from '@/lib/UserData';
 
-import styles from '@/styles/History.module.css';
+import styles from '@/styles/history.module.css';
 
 
 export default function History() {
